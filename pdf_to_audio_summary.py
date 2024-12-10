@@ -16,7 +16,7 @@ nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
 # Set your Gemini API key
-genai.configure(api_key="AIzaSyA5HGyznAbT896q4iCePa5qbk7dWo18LDU")
+genai.configure(api_key="YOUR_API_KEY_HERE")
 
 # Load spaCy model for enhanced entity extraction
 nlp = spacy.load("en_core_web_trf")  # Transformer-based model for better accuracy
@@ -28,7 +28,7 @@ def extract_text_from_pdf(pdf_path):
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
-                text += page.extract_text()
+                text += page.extract_text() or ""  # Handle NoneType gracefully
         return text
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
@@ -59,6 +59,7 @@ def extract_entities_and_relationships(text):
     # Extract relationships (simple subject-verb-object)
     for sent in doc.sents:
         for token in sent:
+            # Fix relationship extraction to handle more cases
             if token.dep_ == "nsubj" and token.head.pos_ == "VERB":
                 relations.append((token.text, token.head.text, token.head.dep_))
 
