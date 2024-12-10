@@ -1,16 +1,11 @@
-PyPDF2
-google-generativeai
-gtts
-networkx
-matplotlib
-plotly
-neo4j
-scikit-learn
-textblob
-nltk
-python-dotenv
 streamlit==1.40.2
 spacy==3.6.1
-torch>=2.0.0  # Needed for en_core_web_trf
-transformers>=4.31.0  # Required for transformer models in spaCy
-
+torch>=2.0.0
+transformers>=4.31.0
+gtts
+pygraphviz
+networkx
+plotly
+neo4j
+PyPDF2
+google-generativeai
