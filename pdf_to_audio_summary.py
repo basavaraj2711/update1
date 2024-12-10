@@ -16,10 +16,10 @@ nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
 # Set your Gemini API key
-genai.configure(api_key="YOUR_API_KEY_HERE")
+genai.configure(api_key="AIzaSyA5HGyznAbT896q4iCePa5qbk7dWo18LDU")
 
 # Load spaCy model for enhanced entity extraction
-nlp = spacy.load("en_core_web_trf")  # Transformer-based model for better accuracy
+nlp = spacy.load("en_core_web_sm")  # Transformer-based model for better accuracy
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
