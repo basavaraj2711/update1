@@ -1,14 +1,10 @@
 streamlit
 PyPDF2
-google-generativeai
+openai
 gtts
-spacy
+transformers
 networkx
 matplotlib
 plotly
 textblob
 nltk
-spacy==3.0.0
-en-core-web-sm==3.0.0
-
-
