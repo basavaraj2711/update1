@@ -6,9 +6,7 @@ import spacy
 import networkx as nx
 import matplotlib.pyplot as plt
 import plotly.express as px
-from neo4j import GraphDatabase
 from collections import Counter
-from sklearn.feature_extraction.text import TfidfVectorizer
 from textblob import TextBlob
 import nltk
 from nltk.corpus import stopwords
@@ -22,16 +20,6 @@ genai.configure(api_key="AIzaSyA5HGyznAbT896q4iCePa5qbk7dWo18LDU")
 
 # Load spaCy model for enhanced entity extraction
 nlp = spacy.load("en_core_web_trf")  # Transformer-based model for better accuracy
-
-# Neo4j connection details
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USERNAME = "neo4j"
-NEO4J_PASSWORD = "password"
-
-# Connect to Neo4j
-def connect_neo4j():
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
-    return driver
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -71,33 +59,10 @@ def extract_entities_and_relationships(text):
     # Extract relationships (simple subject-verb-object)
     for sent in doc.sents:
         for token in sent:
-            if token.dep_ == "nsubj" and token.head.pos_ == "VERB" and token.head.dep_:
+            if token.dep_ == "nsubj" and token.head.pos_ == "VERB":
                 relations.append((token.text, token.head.text, token.head.dep_))
 
     return entities, relations
-
-# Upload extracted entities and relationships to Neo4j
-def upload_to_neo4j(entities, relations):
-    driver = connect_neo4j()
-    session = driver.session()
-    try:
-        # Upload entities
-        for entity, label in entities:
-            session.run("""
-                MERGE (e:Entity {name: $name, label: $label})
-            """, name=entity, label=label)
-        
-        # Upload relationships
-        for subj, verb, obj in relations:
-            session.run("""
-                MATCH (a:Entity {name: $subj}), (b:Entity {name: $obj})
-                MERGE (a)-[:RELATION {type: $verb}]->(b)
-            """, subj=subj, obj=obj, verb=verb.upper())
-        st.success("Data successfully uploaded to Neo4j!")
-    except Exception as e:
-        st.error(f"Error uploading data to Neo4j: {str(e)}")
-    finally:
-        session.close()
 
 # Function to perform refined word frequency analysis
 def refined_word_frequency_analysis(text):
@@ -167,10 +132,6 @@ def process_pdf_to_audio_summary(pdf_path):
     st.write(entities)
     st.write("Relationships:")
     st.write(relations)
-
-    # Upload to Neo4j
-    st.write("Uploading extracted data to Neo4j...")
-    upload_to_neo4j(entities, relations)
 
     # Display knowledge graph
     st.write("Visualizing knowledge graph...")
