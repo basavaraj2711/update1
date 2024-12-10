@@ -1,13 +1,12 @@
 import streamlit as st
 import PyPDF2
-import google.generativeai as genai
+import openai
 from gtts import gTTS
-import spacy
+from transformers import pipeline
 import networkx as nx
 import matplotlib.pyplot as plt
 import plotly.express as px
 from collections import Counter
-from textblob import TextBlob
 import nltk
 from nltk.corpus import stopwords
 
@@ -15,11 +14,12 @@ from nltk.corpus import stopwords
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
-# Set your Gemini API key
-genai.configure(api_key="AIzaSyA5HGyznAbT896q4iCePa5qbk7dWo18LDU")
+# Set your OpenAI API key
+openai.api_key = "your-openai-api-key"
 
-# Load spaCy model for enhanced entity extraction
-nlp = spacy.load("en_core_web_sm")  # Transformer-based model for better accuracy
+# Load Hugging Face pipeline for summarization and NER
+summarizer = pipeline("summarization")
+ner_tagger = pipeline("ner")
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -33,37 +33,26 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
 
-# Function to summarize text and extract key data using Gemini API
-def analyze_text_with_gemini(text):
+# Function to summarize text using OpenAI API (alternative to Gemini)
+def analyze_text_with_openai(text):
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(f"""
-            Summarize this text. Extract key data points, entities, relationships, and actionable insights:
-            {text}
-        """)
-        summary = response.text
+        response = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=f"Summarize this text. Extract key data points, entities, relationships, and actionable insights:\n\n{text}",
+            temperature=0.5,
+            max_tokens=1000
+        )
+        summary = response.choices[0].text.strip()
         return summary
     except Exception as e:
-        return f"Error with Gemini API: {str(e)}"
+        return f"Error with OpenAI API: {str(e)}"
 
-# Function to extract entities and relationships using spaCy
+# Function to extract entities using Hugging Face's NER pipeline
 def extract_entities_and_relationships(text):
-    doc = nlp(text)
-    entities = []
-    relations = []
-
-    # Extract named entities
-    for ent in doc.ents:
-        entities.append((ent.text, ent.label_))
-
-    # Extract relationships (simple subject-verb-object)
-    for sent in doc.sents:
-        for token in sent:
-            # Fix relationship extraction to handle more cases
-            if token.dep_ == "nsubj" and token.head.pos_ == "VERB":
-                relations.append((token.text, token.head.text, token.head.dep_))
-
-    return entities, relations
+    entities = ner_tagger(text)
+    extracted_entities = [(ent['word'], ent['entity']) for ent in entities]
+    relations = []  # Placeholder, for now, relationships can be further refined
+    return extracted_entities, relations
 
 # Function to perform refined word frequency analysis
 def refined_word_frequency_analysis(text):
@@ -103,8 +92,8 @@ def process_pdf_to_audio_summary(pdf_path):
         st.error(pdf_text)
         return
 
-    st.write("Summarizing text and extracting key data using Gemini API...")
-    analysis = analyze_text_with_gemini(pdf_text)
+    st.write("Summarizing text and extracting key data using OpenAI API...")
+    analysis = analyze_text_with_openai(pdf_text)
     if analysis.startswith("Error"):
         st.error(analysis)
         return
