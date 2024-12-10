@@ -8,3 +8,5 @@ matplotlib
 plotly
 textblob
 nltk
+torch
+tensorflow
