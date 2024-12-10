@@ -11,3 +11,4 @@ scikit-learn
 textblob
 nltk
 python-dotenv
+en_core_web_trf
