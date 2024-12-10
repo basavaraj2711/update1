@@ -1,12 +1,15 @@
 import streamlit as st
 import PyPDF2
-import openai
+import google.generativeai as genai
 from gtts import gTTS
-from transformers import pipeline
+import spacy
 import networkx as nx
 import matplotlib.pyplot as plt
 import plotly.express as px
+from neo4j import GraphDatabase
 from collections import Counter
+from sklearn.feature_extraction.text import TfidfVectorizer
+from textblob import TextBlob
 import nltk
 from nltk.corpus import stopwords
 
@@ -14,12 +17,21 @@ from nltk.corpus import stopwords
 nltk.download("stopwords")
 stop_words = set(stopwords.words("english"))
 
-# Set your OpenAI API key
-openai.api_key = "your-openai-api-key"
+# Set your Gemini API key
+genai.configure(api_key="AIzaSyA5HGyznAbT896q4iCePa5qbk7dWo18LDU")
 
-# Load Hugging Face pipeline for summarization and NER
-summarizer = pipeline("summarization")
-ner_tagger = pipeline("ner")
+# Load spaCy model for enhanced entity extraction
+nlp = spacy.load("en_core_web_trf")  # Transformer-based model for better accuracy
+
+# Neo4j connection details
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_USERNAME = "neo4j"
+NEO4J_PASSWORD = "password"
+
+# Connect to Neo4j
+def connect_neo4j():
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
+    return driver
 
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -28,31 +40,64 @@ def extract_text_from_pdf(pdf_path):
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
-                text += page.extract_text() or ""  # Handle NoneType gracefully
+                text += page.extract_text()
         return text
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
 
-# Function to summarize text using OpenAI API (alternative to Gemini)
-def analyze_text_with_openai(text):
+# Function to summarize text and extract key data using Gemini API
+def analyze_text_with_gemini(text):
     try:
-        response = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=f"Summarize this text. Extract key data points, entities, relationships, and actionable insights:\n\n{text}",
-            temperature=0.5,
-            max_tokens=1000
-        )
-        summary = response.choices[0].text.strip()
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(f"""
+            Summarize this text. Extract key data points, entities, relationships, and actionable insights:
+            {text}
+        """)
+        summary = response.text
         return summary
     except Exception as e:
-        return f"Error with OpenAI API: {str(e)}"
+        return f"Error with Gemini API: {str(e)}"
 
-# Function to extract entities using Hugging Face's NER pipeline
+# Function to extract entities and relationships using spaCy
 def extract_entities_and_relationships(text):
-    entities = ner_tagger(text)
-    extracted_entities = [(ent['word'], ent['entity']) for ent in entities]
-    relations = []  # Placeholder, for now, relationships can be further refined
-    return extracted_entities, relations
+    doc = nlp(text)
+    entities = []
+    relations = []
+
+    # Extract named entities
+    for ent in doc.ents:
+        entities.append((ent.text, ent.label_))
+
+    # Extract relationships (simple subject-verb-object)
+    for sent in doc.sents:
+        for token in sent:
+            if token.dep_ == "nsubj" and token.head.pos_ == "VERB" and token.head.dep_:
+                relations.append((token.text, token.head.text, token.head.dep_))
+
+    return entities, relations
+
+# Upload extracted entities and relationships to Neo4j
+def upload_to_neo4j(entities, relations):
+    driver = connect_neo4j()
+    session = driver.session()
+    try:
+        # Upload entities
+        for entity, label in entities:
+            session.run("""
+                MERGE (e:Entity {name: $name, label: $label})
+            """, name=entity, label=label)
+        
+        # Upload relationships
+        for subj, verb, obj in relations:
+            session.run("""
+                MATCH (a:Entity {name: $subj}), (b:Entity {name: $obj})
+                MERGE (a)-[:RELATION {type: $verb}]->(b)
+            """, subj=subj, obj=obj, verb=verb.upper())
+        st.success("Data successfully uploaded to Neo4j!")
+    except Exception as e:
+        st.error(f"Error uploading data to Neo4j: {str(e)}")
+    finally:
+        session.close()
 
 # Function to perform refined word frequency analysis
 def refined_word_frequency_analysis(text):
@@ -92,8 +137,8 @@ def process_pdf_to_audio_summary(pdf_path):
         st.error(pdf_text)
         return
 
-    st.write("Summarizing text and extracting key data using OpenAI API...")
-    analysis = analyze_text_with_openai(pdf_text)
+    st.write("Summarizing text and extracting key data using Gemini API...")
+    analysis = analyze_text_with_gemini(pdf_text)
     if analysis.startswith("Error"):
         st.error(analysis)
         return
@@ -122,6 +167,10 @@ def process_pdf_to_audio_summary(pdf_path):
     st.write(entities)
     st.write("Relationships:")
     st.write(relations)
+
+    # Upload to Neo4j
+    st.write("Uploading extracted data to Neo4j...")
+    upload_to_neo4j(entities, relations)
 
     # Display knowledge graph
     st.write("Visualizing knowledge graph...")
