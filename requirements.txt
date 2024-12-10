@@ -6,6 +6,6 @@ spacy==3.7.3
 networkx==3.0
 matplotlib==3.8.0
 plotly==5.17.0
-neo4j==5.10.0
+neo4j==5.9.0
 textblob==0.17.1
 nltk==3.9.0
