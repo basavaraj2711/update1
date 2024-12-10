@@ -1,12 +1,13 @@
 streamlit
 PyPDF2
-openai
+google-generativeai
 gtts
-transformers
+spacy
 networkx
 matplotlib
 plotly
+neo4j
+scikit-learn
 textblob
 nltk
-torch
-tensorflow
+python-dotenv
