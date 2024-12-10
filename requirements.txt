@@ -1,8 +1,6 @@
-streamlit
 PyPDF2
 google-generativeai
 gtts
-spacy
 networkx
 matplotlib
 plotly
@@ -11,4 +9,8 @@ scikit-learn
 textblob
 nltk
 python-dotenv
-en_core_web_trf
+streamlit==1.40.2
+spacy==3.6.1
+torch>=2.0.0  # Needed for en_core_web_trf
+transformers>=4.31.0  # Required for transformer models in spaCy
+
