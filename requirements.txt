@@ -8,3 +8,6 @@ matplotlib
 plotly
 textblob
 nltk
+spacy
+en-core-web-trf
+
